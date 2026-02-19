@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ArtiFact Admin — Philippine National Museum</title>
+  <style>
+    /* ── Variables ──────────────────────────────────────── */
+    :root {
+      --gold:    #c9a84c;
+      --navy:    #0a1628;
+      --navy-s:  #0f1f3d;
+      --navy-c:  #162040;
+      --white:   #f4f0e8;
+      --wdim:    rgba(244,240,232,0.65);
+      --green:   #4caf7d;
+      --red:     #e05c5c;
+      --r:       8px;
+      --tr:      0.25s ease;
+      --font:    'Trebuchet MS', Gill Sans, sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+    body {
+      font-family: var(--font);
+      background: var(--navy);
+      color: var(--white);
+      min-height: 100vh;
+    }
+    a { color: var(--gold); text-decoration: none; }
+
+    /* ── Login ──────────────────────────────────────────── */
+    #login-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      background: radial-gradient(ellipse at center, #0f1f3d 0%, var(--navy) 70%);
+    }
+    .login-box {
+      background: var(--navy-s);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 340px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 1.8rem;
+    }
+    .login-logo h1 {
+      font-size: 1.6rem;
+      color: var(--gold);
+      letter-spacing: 0.12em;
+      font-family: 'Palatino Linotype', serif;
+    }
+    .login-logo p { font-size: 0.7rem; color: var(--wdim); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 2px;}
+
+    /* ── Shared form ────────────────────────────────────── */
+    .form-group { margin-bottom: 1rem; }
+    label { display:block; font-size:0.72rem; color: var(--gold); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:5px; }
+    input, textarea, select {
+      width:100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--r);
+      color: var(--white);
+      font-family: var(--font);
+      font-size: 0.88rem;
+      padding: 10px 12px;
+      transition: border-color var(--tr);
+    }
+    input:focus, textarea:focus, select:focus { outline:none; border-color: rgba(201,168,76,0.5); }
+    textarea { resize:vertical; min-height:90px; }
+    select option { background: var(--navy-s); }
+    .btn {
+      display: inline-block;
+      border: none;
+      border-radius: var(--r);
+      font-family: var(--font);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: opacity var(--tr), transform var(--tr);
+    }
+    .btn:hover { opacity:0.88; transform: translateY(-1px); }
+    .btn-gold { background: linear-gradient(135deg, #b8922a, var(--gold)); color: var(--navy); width:100%; }
+    .btn-outline { background: transparent; border: 1px solid var(--gold); color: var(--gold); }
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 0.68rem; }
+
+    .error-msg { color: var(--red); font-size:0.78rem; margin-top:6px; text-align:center; }
+    .success-msg { color: var(--green); font-size:0.78rem; margin-top:6px; text-align:center; }
+
+    /* ── Admin Shell ───────────────────────────────────── */
+    #admin-shell { display: none; }
+
+    header.admin-header {
+      background: var(--navy-s);
+      border-bottom: 1px solid rgba(201,168,76,0.18);
+      padding: 0 1.5rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-brand { font-size: 1rem; color: var(--gold); letter-spacing: 0.1em; font-family: 'Palatino Linotype', serif; }
+    .header-brand span { font-size: 0.68rem; color: var(--wdim); letter-spacing: 0.15em; text-transform:uppercase; display:block; }
+    .header-right { display:flex; align-items:center; gap:12px; }
+    .admin-user { font-size:0.75rem; color: var(--wdim); }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    .admin-layout { display:flex; min-height: calc(100vh - 56px); }
+    nav.sidebar {
+      width: 200px;
+      flex-shrink: 0;
+      background: var(--navy-s);
+      border-right: 1px solid rgba(201,168,76,0.1);
+      padding: 1rem 0;
+    }
+    .nav-item {
+      display: block;
+      padding: 10px 1.5rem;
+      font-size: 0.8rem;
+      color: var(--wdim);
+      cursor: pointer;
+      transition: background var(--tr), color var(--tr);
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover { background: rgba(201,168,76,0.06); color: var(--white); }
+    .nav-item.active { border-left-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.08); }
+
+    main.admin-main { flex:1; padding: 1.5rem 2rem; overflow:auto; }
+
+    .section { display:none; }
+    .section.active { display:block; }
+
+    h2.section-title {
+      font-size:1.1rem;
+      color: var(--gold);
+      letter-spacing:0.1em;
+      font-family: 'Palatino Linotype', serif;
+      margin-bottom: 1.2rem;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(201,168,76,0.15);
+    }
+
+    /* ── Cards & Tables ─────────────────────────────────── */
+    .card {
+      background: var(--navy-s);
+      border: 1px solid rgba(201,168,76,0.12);
+      border-radius: var(--r);
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .card h3 { font-size:0.88rem; color: var(--gold); margin-bottom: 0.8rem; }
+
+    table { width:100%; border-collapse: collapse; font-size:0.82rem; }
+    th {
+      text-align:left;
+      padding: 8px 10px;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform:uppercase;
+      color: var(--gold);
+      border-bottom: 1px solid rgba(201,168,76,0.2);
+    }
+    td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: top; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .stars-display { color: var(--gold); letter-spacing: 2px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size:0.65rem;
+      letter-spacing:0.05em;
+      font-weight:700;
+    }
+    .badge-green { background: rgba(76,175,125,0.18); color: var(--green); border: 1px solid rgba(76,175,125,0.3); }
+    .badge-gold  { background: rgba(201,168,76,0.12); color: var(--gold);  border: 1px solid rgba(201,168,76,0.3); }
+
+    /* ── Modal (lightweight) ────────────────────────────── */
+    .mini-modal-backdrop {
+      position:fixed; inset:0;
+      background:rgba(5,10,25,0.75);
+      z-index:500;
+      display:none; align-items:center; justify-content:center;
+    }
+    .mini-modal-backdrop.open { display:flex; }
+    .mini-modal {
+      background: var(--navy-s);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 14px;
+      padding: 1.8rem;
+      width: 480px;
+      max-width: 94vw;
+      max-height: 90vh;
+      overflow-y:auto;
+      position:relative;
+    }
+    .mini-modal h3 { color: var(--gold); margin-bottom:1rem; font-size:0.95rem; }
+    .mini-modal-close {
+      position:absolute; top:12px; right:14px;
+      background:none; border:none; color: var(--wdim);
+      font-size:1rem; cursor:pointer;
+    }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+    /* ── Responsive ─────────────────────────────────────── */
+    @media(max-width:600px){
+      nav.sidebar { width:56px; }
+      .nav-item span { display:none; }
+      .nav-item { padding: 12px; text-align:center; font-size:1.1rem; }
+      main.admin-main { padding: 1rem; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════ LOGIN ═══════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>ArtiFact</h1>
+      <p>Admin Panel · Philippine National Museum</p>
+    </div>
+    <div class="form-group">
+      <label for="login-user">Username</label>
+      <input type="text" id="login-user" autocomplete="username" placeholder="admin" />
+    </div>
+    <div class="form-group">
+      <label for="login-pass">Password</label>
+      <input type="password" id="login-pass" autocomplete="current-password" placeholder="••••••••" />
+    </div>
+    <button class="btn btn-gold" id="login-btn" style="margin-top:0.5rem">Sign In</button>
+    <p class="error-msg" id="login-error"></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════ ADMIN SHELL ═════════════════════ -->
+<div id="admin-shell">
+  <header class="admin-header">
+    <div class="header-brand">
+      ArtiFact
+      <span>Management Panel</span>
+    </div>
+    <div class="header-right">
+      <span class="admin-user" id="admin-username-display"></span>
+      <button class="btn btn-outline btn-sm" id="logout-btn">Logout</button>
+    </div>
+  </header>
+
+  <div class="admin-layout">
+    <nav class="sidebar">
+      <div class="nav-item active" data-section="feedback"><span>📊 Feedback</span></div>
+      <div class="nav-item" data-section="paintings"><span>🖼 Paintings</span></div>
+      <div class="nav-item" data-section="content"><span>✏️ Content</span></div>
+    </nav>
+
+    <main class="admin-main">
+
+      <!-- ── FEEDBACK SECTION ─────────────────────────── -->
+      <section class="section active" id="section-feedback">
+        <h2 class="section-title">Visitor Feedback</h2>
+        <div class="card" style="margin-bottom:1.2rem;">
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <label style="margin:0; display:inline;">Filter by Painting:</label>
+            <select id="feedback-painting-filter" style="width:auto; min-width:180px;">
+              <option value="">All Paintings</option>
+            </select>
+            <button class="btn btn-outline btn-sm" id="feedback-load-btn">Load</button>
+          </div>
+        </div>
+        <div class="card">
+          <div id="feedback-stats" style="display:flex; gap:2rem; margin-bottom:1rem; flex-wrap:wrap;"></div>
+          <table>
+            <thead><tr>
+              <th>Painting</th><th>Rating</th><th>Comment</th><th>Time</th><th></th>
+            </tr></thead>
+            <tbody id="feedback-tbody"></tbody>
+          </table>
+          <p id="feedback-empty" style="color:var(--wdim); font-size:0.8rem; margin-top:1rem; display:none;">No feedback entries found.</p>
+        </div>
+      </section>
+
+      <!-- ── PAINTINGS SECTION ────────────────────────── -->
+      <section class="section" id="section-paintings">
+        <h2 class="section-title">Paintings</h2>
+        <div style="margin-bottom:1rem;">
+          <button class="btn btn-outline" id="add-painting-btn">+ Add Painting</button>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr>
+              <th>#</th><th>QR Value</th><th>Title</th><th>Artist</th><th>Year</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="paintings-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── CONTENT SECTION ──────────────────────────── -->
+      <section class="section" id="section-content">
+        <h2 class="section-title">Multilingual Content</h2>
+        <div class="card" style="margin-bottom:1rem;">
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <label style="margin:0; display:inline;">Select Painting:</label>
+            <select id="content-painting-select" style="width:auto; min-width:200px;"></select>
+            <label style="margin:0; display:inline;">Language:</label>
+            <select id="content-lang-select" style="width:auto;">
+              <option value="1">English (EN)</option>
+              <option value="2">Korean (KR)</option>
+              <option value="3">Japanese (JP)</option>
+              <option value="4">Chinese (CH)</option>
+            </select>
+            <button class="btn btn-outline btn-sm" id="content-load-btn">Load</button>
+          </div>
+        </div>
+        <div class="card" id="content-form-card">
+          <h3>Edit Content</h3>
+          <div class="form-group">
+            <label>Title (Localised)</label>
+            <input type="text" id="ct-title" placeholder="Localised painting title"/>
+          </div>
+          <div class="form-group">
+            <label>Short Description</label>
+            <textarea id="ct-desc" rows="3" placeholder="Brief display description…"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Historical Background</label>
+            <textarea id="ct-hist" rows="7" placeholder="Full historical background text shown in the AR modal…"></textarea>
+          </div>
+          <button class="btn btn-gold" id="content-save-btn" style="max-width:200px;">Save Content</button>
+          <p class="success-msg" id="content-status" style="text-align:left;"></p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ══════════════ Painting Add/Edit Modal ══════════════════ -->
+<div class="mini-modal-backdrop" id="painting-modal">
+  <div class="mini-modal">
+    <button class="mini-modal-close" id="painting-modal-close">✕</button>
+    <h3 id="painting-modal-title">Add Painting</h3>
+    <input type="hidden" id="pm-id"/>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="pm-title" placeholder="e.g. Spoliarium"/>
+      </div>
+      <div class="form-group">
+        <label>Artist Name</label>
+        <input type="text" id="pm-artist" placeholder="e.g. Juan Luna"/>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Year Created</label>
+        <input type="number" id="pm-year" placeholder="1884" min="1000" max="2100"/>
+      </div>
+      <div class="form-group">
+        <label>QR Value (unique)</label>
+        <input type="text" id="pm-qr" placeholder="ARTIFACT-PAINT-004"/>
+      </div>
+    </div>
+    <button class="btn btn-gold" id="pm-save-btn" style="margin-top:0.5rem;">Save Painting</button>
+    <p class="error-msg"   id="pm-error"></p>
+    <p class="success-msg" id="pm-success"></p>
+  </div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   ArtiFact Admin Panel — JavaScript
+───────────────────────────────────────────────────────────── */
+const API = 'api';
+
+// ── Helpers ──────────────────────────────────────────────────
+async function apiCall(endpoint, params = {}, method = 'GET', body = null) {
+  let url = `${API}/${endpoint}`;
+  if (method === 'GET' && Object.keys(params).length)
+    url += '?' + new URLSearchParams(params).toString();
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  return res.json();
+}
+
+function starsHtml(n) {
+  return '★'.repeat(n) + '☆'.repeat(5 - n);
+}
+
+function timeAgo(ts) {
+  const d = new Date(ts);
+  return d.toLocaleString();
+}
+
+// ── Auth ──────────────────────────────────────────────────────
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const errEl    = document.getElementById('login-error');
+  errEl.textContent = '';
+
+  const res = await apiCall('admin_auth.php', {}, 'POST', { action: 'login', username, password });
+  if (res.success) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-shell').style.display  = 'block';
+    document.getElementById('admin-username-display').textContent = res.username;
+    bootstrapAdmin();
+  } else {
+    errEl.textContent = res.error || 'Login failed.';
+  }
+});
+document.getElementById('login-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-btn').click();
+});
+
+document.getElementById('logout-btn').addEventListener('click', async () => {
+  await apiCall('admin_auth.php', {}, 'POST', { action: 'logout' });
+  location.reload();
+});
+
+// Auto-check session on load
+(async () => {
+  const res = await apiCall('admin_auth.php', { action: 'check' });
+  if (res.authenticated) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-shell').style.display  = 'block';
+    document.getElementById('admin-username-display').textContent = res.username;
+    bootstrapAdmin();
+  }
+})();
+
+// ── Navigation ────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('section-' + item.dataset.section).classList.add('active');
+  });
+});
+
+// ── Bootstrap (runs after login) ─────────────────────────────
+let paintingsList = [];
+
+async function bootstrapAdmin() {
+  await loadPaintingsData();
+  await loadFeedback();
+}
+
+// ── Paintings list ───────────────────────────────────────────
+async function loadPaintingsData() {
+  const res = await apiCall('admin_api.php', { resource: 'paintings' });
+  paintingsList = res.paintings || [];
+
+  // Populate paintings table
+  const tbody = document.getElementById('paintings-tbody');
+  tbody.innerHTML = paintingsList.map(p => `
+    <tr>
+      <td>${p.painting_id}</td>
+      <td><code style="font-size:0.72rem;color:var(--gold)">${p.qr_value}</code></td>
+      <td>${p.title}</td>
+      <td>${p.artist_name}</td>
+      <td>${p.year_created}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openEditPainting(${p.painting_id})">Edit</button>
+        <button class="btn btn-red btn-sm" style="margin-left:4px" onclick="deletePainting(${p.painting_id})">Del</button>
+      </td>
+    </tr>
+  `).join('');
+
+  // Populate selects
+  const opts = paintingsList.map(p => `<option value="${p.painting_id}">${p.title}</option>`).join('');
+  document.getElementById('feedback-painting-filter').innerHTML = '<option value="">All Paintings</option>' + opts;
+  document.getElementById('content-painting-select').innerHTML  = opts;
+}
+
+// ── Feedback ─────────────────────────────────────────────────
+async function loadFeedback() {
+  const paintingId = document.getElementById('feedback-painting-filter').value;
+  const params     = { resource: 'feedback' };
+  if (paintingId) params.painting_id = paintingId;
+  const res        = await apiCall('admin_api.php', params);
+  const list       = res.feedback || [];
+
+  const tbody = document.getElementById('feedback-tbody');
+  const empty = document.getElementById('feedback-empty');
+
+  if (!list.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Stats bar
+  const total = list.length;
+  const avg   = (list.reduce((s, f) => s + parseInt(f.rating), 0) / total).toFixed(1);
+  document.getElementById('feedback-stats').innerHTML = `
+    <div><strong style="color:var(--gold);font-size:1.4rem">${avg}</strong><span style="color:var(--wdim);font-size:0.75rem;display:block">avg rating</span></div>
+    <div><strong style="font-size:1.4rem">${total}</strong><span style="color:var(--wdim);font-size:0.75rem;display:block">responses</span></div>
+  `;
+
+  tbody.innerHTML = list.map(f => `
+    <tr>
+      <td>${f.painting_title}</td>
+      <td><span class="stars-display" style="font-size:0.9rem">${starsHtml(f.rating)}</span></td>
+      <td style="max-width:240px;font-size:0.8rem;color:var(--wdim)">${f.comment || '<em>—</em>'}</td>
+      <td style="font-size:0.72rem;color:var(--wdim);white-space:nowrap">${timeAgo(f.feedback_time)}</td>
+      <td><button class="btn btn-red btn-sm" onclick="deleteFeedback(${f.feedback_id})">Del</button></td>
+    </tr>
+  `).join('');
+}
+
+async function deleteFeedback(id) {
+  if (!confirm('Delete this feedback entry?')) return;
+  await apiCall('admin_api.php', {}, 'POST', { resource: 'feedback', action: 'delete', feedback_id: id });
+  loadFeedback();
+}
+
+document.getElementById('feedback-load-btn').addEventListener('click', loadFeedback);
+
+// ── Painting Add/Edit ────────────────────────────────────────
+document.getElementById('add-painting-btn').addEventListener('click', () => {
+  document.getElementById('painting-modal-title').textContent = 'Add Painting';
+  document.getElementById('pm-id').value = '';
+  ['pm-title','pm-artist','pm-year','pm-qr'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pm-error').textContent = '';
+  document.getElementById('pm-success').textContent = '';
+  document.getElementById('painting-modal').classList.add('open');
+});
+
+document.getElementById('painting-modal-close').addEventListener('click', () => {
+  document.getElementById('painting-modal').classList.remove('open');
+});
+
+function openEditPainting(id) {
+  const p = paintingsList.find(x => x.painting_id == id);
+  if (!p) return;
+  document.getElementById('painting-modal-title').textContent = 'Edit Painting';
+  document.getElementById('pm-id').value     = p.painting_id;
+  document.getElementById('pm-title').value  = p.title;
+  document.getElementById('pm-artist').value = p.artist_name;
+  document.getElementById('pm-year').value   = p.year_created;
+  document.getElementById('pm-qr').value     = p.qr_value;
+  document.getElementById('pm-error').textContent   = '';
+  document.getElementById('pm-success').textContent = '';
+  document.getElementById('painting-modal').classList.add('open');
+}
+
+document.getElementById('pm-save-btn').addEventListener('click', async () => {
+  const id     = document.getElementById('pm-id').value;
+  const action = id ? 'edit' : 'add';
+  const payload = {
+    resource:     'paintings',
+    action,
+    painting_id:  id || undefined,
+    title:        document.getElementById('pm-title').value.trim(),
+    artist_name:  document.getElementById('pm-artist').value.trim(),
+    year_created: document.getElementById('pm-year').value,
+    qr_value:     document.getElementById('pm-qr').value.trim(),
+  };
+  const res = await apiCall('admin_api.php', {}, 'POST', payload);
+  if (res.success) {
+    document.getElementById('pm-success').textContent = res.message;
+    await loadPaintingsData();
+  } else {
+    document.getElementById('pm-error').textContent = res.error;
+  }
+});
+
+async function deletePainting(id) {
+  if (!confirm('Delete this painting and all its content/feedback?')) return;
+  await apiCall('admin_api.php', {}, 'POST', { resource: 'paintings', action: 'delete', painting_id: id });
+  await loadPaintingsData();
+  loadFeedback();
+}
+
+// ── Content / Painting Info ──────────────────────────────────
+document.getElementById('content-load-btn').addEventListener('click', async () => {
+  const paintingId = document.getElementById('content-painting-select').value;
+  const langId     = document.getElementById('content-lang-select').value;
+  if (!paintingId) return;
+
+  const res  = await apiCall('admin_api.php', { resource: 'painting_info', painting_id: paintingId });
+  const info = (res.painting_info || []).find(r => r.language_id == langId);
+
+  document.getElementById('ct-title').value = info ? info.title_text : '';
+  document.getElementById('ct-desc').value  = info ? info.description_text : '';
+  document.getElementById('ct-hist').value  = info ? info.historical_background_text : '';
+  document.getElementById('content-status').textContent = '';
+});
+
+document.getElementById('content-save-btn').addEventListener('click', async () => {
+  const paintingId = document.getElementById('content-painting-select').value;
+  const langId     = document.getElementById('content-lang-select').value;
+  if (!paintingId) { alert('Select a painting first.'); return; }
+  const res = await apiCall('admin_api.php', {}, 'POST', {
+    resource:                   'painting_info',
+    action:                     'upsert',
+    painting_id:                paintingId,
+    language_id:                langId,
+    title_text:                 document.getElementById('ct-title').value,
+    description_text:           document.getElementById('ct-desc').value,
+    historical_background_text: document.getElementById('ct-hist').value,
+  });
+  const status = document.getElementById('content-status');
+  if (res.success) { status.textContent = '✓ Saved!'; status.className = 'success-msg'; }
+  else             { status.textContent = res.error;  status.className = 'error-msg'; }
+});
+</script>
+</body>
+</html>
