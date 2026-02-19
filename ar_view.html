@@ -7,318 +7,104 @@
 
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:wght@300;400&display=swap"
-        rel="stylesheet">
-
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            font-family: 'Lato', sans-serif;
-        }
-
-        /* --- UI: Bottom Bar --- */
-        #bottom-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 180px;
-            background: linear-gradient(to top, rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0));
-            color: white;
-            display: none;
-            padding: 20px;
-            box-sizing: border-box;
-            z-index: 999;
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-        }
-
-        .title-group {
-            flex: 1;
-            padding-bottom: 10px;
-        }
-
-        #art-title {
-            font-family: 'Cinzel', serif;
-            font-size: 28px;
-            font-weight: 700;
-            margin: 0;
-            text-transform: uppercase;
-            line-height: 1;
-            text-shadow: 2px 2px 4px black;
-        }
-
-        #art-year {
-            font-family: 'Cinzel', serif;
-            font-size: 16px;
-            margin-top: 5px;
-            opacity: 0.9;
-            font-style: italic;
-        }
-
-        #desc-container {
-            flex: 2;
-            margin-left: 20px;
-            padding-bottom: 10px;
-            font-size: 14px;
-            line-height: 1.4;
-            max-width: 55%;
-            border-left: 2px solid rgba(255, 255, 255, 0.4);
-            padding-left: 15px;
-            height: 90px;
-            overflow-y: auto;
-            text-shadow: 1px 1px 2px black;
-        }
-
-        /* --- UI: Right Menu --- */
-        #right-sidebar {
-            position: fixed;
-            top: 20%;
-            right: 0;
-            width: 150px;
-            text-align: right;
-            padding-right: 20px;
-            display: none;
-            z-index: 1000;
-        }
-
-        .menu-header {
-            font-family: 'Cinzel', serif;
-            font-size: 18px;
-            margin-bottom: 15px;
-            border-bottom: 1px solid white;
-            display: inline-block;
-            color: white;
-            text-shadow: 1px 1px 3px black;
-        }
-
-        .menu-item {
-            display: block;
-            color: rgba(255, 255, 255, 0.9);
-            text-decoration: none;
-            font-size: 13px;
-            margin-bottom: 15px;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: 0.3s;
-            text-shadow: 1px 1px 2px black;
-        }
-
-        .menu-item:hover,
-        .menu-item.active {
-            color: #FFD700;
-            transform: translateX(-5px);
-            font-weight: bold;
-        }
-
-        /* --- UI: Buttons --- */
-        #fab-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1001;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .circle-btn {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid white;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #lang-options {
-            display: none;
-            flex-direction: column;
-            gap: 5px;
-            margin-bottom: 5px;
-        }
-
-        .mini-flag {
-            font-size: 12px;
-            width: 35px;
-            height: 35px;
-        }
-    </style>
 </head>
 
 <body>
     <a-scene mindar-image="imageTargetSrc: ./assets/museum_collection.mind;" color-space="sRGB"
         renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false">
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-        <div id="entity-container"></div>
+        device-orientation-permission-ui="enabled: false" raycaster="objects: .clickable"
+        cursor="fuse: false; rayOrigin: mouse;">
+
+        <a-camera look-controls="enabled: false"></a-camera>
+
     </a-scene>
 
-    <div id="right-sidebar">
-        <div class="menu-header">DISCOVER:</div>
-        <div class="menu-item active" onclick="showContent('desc')">General Info</div>
-        <div class="menu-item" onclick="showContent('history')">History</div>
-        <div class="menu-item" onclick="showContent('artist')">Artist</div>
-        <div class="menu-item" onclick="submitFeedbackPrompt()" style="color: #6495ED;">Rate Art PLEASE</div>
-    </div>
 
-    <div id="bottom-bar">
-        <div class="title-group">
-            <h1 id="art-title">SCANNING...</h1>
-            <div id="art-year">ArtiFact</div>
-        </div>
-        <div id="desc-container">
-            <span id="main-text">Point camera at a painting.</span>
-        </div>
-    </div>
-
-    <div id="fab-container">
-        <div id="lang-options">
-            <button class="circle-btn mini-flag" onclick="setLanguage('en')">EN</button>
-            <button class="circle-btn mini-flag" onclick="setLanguage('kr')">KR</button>
-            <button class="circle-btn mini-flag" onclick="setLanguage('jp')">JP</button>
-            <button class="circle-btn mini-flag" onclick="setLanguage('cn')">CN</button>
-        </div>
-        <button class="circle-btn" onclick="toggleLangMenu()">🌐</button>
-        <button class="circle-btn" onclick="endSession()">✖</button>
-    </div>
 
     <script>
         const TOTAL_PAINTINGS = 3;
         const scene = document.querySelector('a-scene');
-        const bottomBar = document.querySelector('#bottom-bar');
-        const sidebar = document.querySelector('#right-sidebar');
 
-        const titleEl = document.querySelector('#art-title');
-        const yearEl = document.querySelector('#art-year');
-        const textEl = document.querySelector('#main-text');
-
-        let currentData = null;
-        let currentLang = 'en';
-        let currentSection = 'desc';
 
         // 1. Generate Targets
         for (let i = 0; i < TOTAL_PAINTINGS; i++) {
             let entity = document.createElement('a-entity');
             entity.setAttribute('mindar-image-target', `targetIndex: ${i}`);
 
-            let plane = document.createElement('a-plane');
-            plane.setAttribute('opacity', '0.0');
-            plane.setAttribute('height', '1'); plane.setAttribute('width', '1');
-            entity.appendChild(plane);
+            entity.userData = { paintingData: null };
 
-            entity.addEventListener("targetFound", event => {
-                bottomBar.style.display = 'flex';
-                sidebar.style.display = 'block';
+            // --- Info Panel and Text ---
+            let infoPanel = document.createElement('a-plane');
+            infoPanel.setAttribute('position', '0 -0.8 0');
+            infoPanel.setAttribute('width', '1.4');
+            infoPanel.setAttribute('height', '0.6');
+            infoPanel.setAttribute('color', '#111');
+            infoPanel.setAttribute('opacity', '0.85');
+            entity.appendChild(infoPanel);
 
-                // Fetch using ID + 1 (MindAR index 0 = DB ID 1)
+            let infoText = document.createElement('a-text');
+            infoText.setAttribute('position', '0 -0.75 0.05');
+            infoText.setAttribute('align', 'center');
+            infoText.setAttribute('color', 'white');
+            infoText.setAttribute('width', '1.3');
+            infoText.setAttribute('value', 'Scanning...');
+            entity.appendChild(infoText);
+
+            function createButton(label, xPos, sectionKey) {
+                let btn = document.createElement('a-plane');
+                btn.setAttribute('position', `${xPos} -1.2 0.1`);
+                btn.setAttribute('width', '0.4');
+                btn.setAttribute('height', '0.2');
+                btn.setAttribute('color', '#333');
+                btn.setAttribute('class', 'clickable');
+                btn.setAttribute('opacity', '0.9');
+
+                let btnText = document.createElement('a-text');
+                btnText.setAttribute('value', label);
+                btnText.setAttribute('align', 'center');
+                btnText.setAttribute('color', '#FFD700');
+                btnText.setAttribute('width', '1.5');
+                btnText.setAttribute('position', '0 0 0.01');
+                btn.appendChild(btnText);
+
+                btn.addEventListener('click', () => {
+                    const data = entity.userData.paintingData;
+                    if (!data) return;
+
+                    switch (sectionKey) {
+                        case 'desc':
+                            infoText.setAttribute('value', data.description);
+                            break;
+                        case 'history':
+                            infoText.setAttribute('value', data.history);
+                            break;
+                        case 'artist':
+                            infoText.setAttribute('value', "Artist: " + data.artist);
+                            break;
+                    }
+                });
+
+                entity.appendChild(btn);
+            }
+
+            createButton("INFO", -0.5, 'desc');
+            createButton("HISTORY", 0, 'history');
+            createButton("ARTIST", 0.5, 'artist');
+
+            entity.addEventListener("targetFound", () => {
                 let db_id = i + 1;
                 fetch(`get_painting.php?id=${db_id}`)
                     .then(response => response.json())
                     .then(data => {
-                        currentData = data;
-                        refreshUI();
+                        entity.userData.paintingData = data;
+                        infoText.setAttribute('value', data.title);
                     });
-            });
-
-            entity.addEventListener("targetLost", event => {
-                resetUI();
             });
 
             scene.appendChild(entity);
         }
 
-        // 2. Refresh UI Content
-        function refreshUI() {
-            if (!currentData) return;
-
-            let suffix = (currentLang === 'en') ? '' : `_${currentLang}`;
-
-            // Update Title & Year
-            let tKey = (currentLang === 'en') ? 'title' : `title_${currentLang}`;
-            titleEl.innerText = currentData[tKey] || currentData.title;
-            yearEl.innerText = currentData.year || "";
-
-            // Update Text Area
-            let content = "";
-            switch (currentSection) {
-                case 'artist':
-                    content = "Artist: " + currentData.artist;
-                    break;
-                case 'history':
-                    // Looks for 'history' (en) or 'hist_kr' (lang)
-                    let hKey = (currentLang === 'en') ? 'history' : `hist${suffix}`;
-                    content = currentData[hKey] || "No historical record available.";
-                    break;
-                default:
-                    // Looks for 'description' (en) or 'desc_kr' (lang)
-                    let dKey = (currentLang === 'en') ? 'description' : `desc${suffix}`;
-                    content = currentData[dKey] || currentData.description;
-            }
-            textEl.innerText = content;
-        }
-
-        // 3. Menu Functions
-        window.showContent = function (section) {
-            currentSection = section;
-            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-            event.target.classList.add('active');
-            refreshUI();
-        }
-
-        window.toggleLangMenu = function () {
-            let menu = document.getElementById('lang-options');
-            menu.style.display = (menu.style.display === 'flex') ? 'none' : 'flex';
-        }
-
-        window.setLanguage = function (lang) {
-            currentLang = lang;
-            document.getElementById('lang-options').style.display = 'none';
-            refreshUI();
-        }
-
-        // 4. Simple Feedback Prompt (Quick Implementation)
-        window.submitFeedbackPrompt = function () {
-            if (!currentData) return;
-            let rating = prompt("Rate this art (1-5):");
-            let comment = prompt("Optional comment:");
-
-            if (rating) {
-                fetch('submit_feedback.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        painting_id: currentData.painting_id,
-                        rating: rating,
-                        comment: comment
-                    })
-                })
-                    .then(res => res.json())
-                    .then(data => alert(data.message));
-            }
-        }
-
-            function resetUI() {
-                currentData = null;
-                currentSection = 'desc';
-
-                titleEl.innerText = "SCANNING...";
-                yearEl.innerText = "ArtiFact";
-                textEl.innerText = "Point camera at a painting.";
-
-                sidebar.style.display = 'none';
-            }
-
     </script>
-</body>7
+</body>67
 
 </html>
