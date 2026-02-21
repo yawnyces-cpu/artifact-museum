@@ -4,107 +4,256 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ArtiFact Museum Guide</title>
-
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            overflow: hidden;
+            background: #2e2e2e;
+        }
+
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .panel {
+            display: none;
+            position: absolute;
+            width: 280px;
+            transform: translate(-50%, 0);
+            pointer-events: all;
+            transition: opacity 0.2s;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        .info-box {
+            background: rgba(10, 10, 10, 0.88);
+            color: #fff;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            padding: 10px 13px;
+            border-radius: 6px 6px 0 0;
+            min-height: 52px;
+            text-align: center;
+            line-height: 1.5;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: none;
+        }
+
+        .btn-row {
+            display: flex;
+        }
+
+        .btn-row button {
+            flex: 1;
+            padding: 9px 0;
+            background: #222;
+            color: #ffd900;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-top: none;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: background 0.15s;
+        }
+
+        .btn-row button:first-child {
+            border-radius: 0 0 0 6px;
+        }
+
+        .btn-row button:last-child {
+            border-radius: 0 0 6px 0;
+        }
+
+        .btn-row button:not(:last-child) {
+            border-right: none;
+        }
+
+        .btn-row button:hover,
+        .btn-row button:active {
+            background: #444;
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 8px solid transparent;
+            border-bottom-color: rgba(10, 10, 10, 0.88);
+        }
+    </style>
 </head>
 
 <body>
-    <a-scene mindar-image="imageTargetSrc: ./assets/museum_collection.mind;" color-space="sRGB"
-        renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
-        device-orientation-permission-ui="enabled: false" raycaster="objects: .clickable"
-        cursor="fuse: false; rayOrigin: mouse;">
 
-        <a-camera look-controls="enabled: false"></a-camera>
+    <a-scene id="scene" mindar-image="imageTargetSrc: ./assets/museum_collection.mind;" color-space="sRGB"
+        renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false">
+
+        <a-camera id="cam" look-controls="enabled: false"></a-camera>
+        <a-entity id="ent-0" mindar-image-target="targetIndex: 0">
+            <a-entity id="anchor-0" position="0 -0.6 0"></a-entity>
+        </a-entity>
+
+        <a-entity id="ent-1" mindar-image-target="targetIndex: 1">
+            <a-entity id="anchor-1" position="0 -0.6 0"></a-entity>
+        </a-entity>
+
+        <a-entity id="ent-2" mindar-image-target="targetIndex: 2">
+            <a-entity id="anchor-2" position="0 -0.6 0"></a-entity>
+        </a-entity>
 
     </a-scene>
 
+    <!--HTML TEXT OVERLAY-->
+    <div id="overlay">
 
+        <div class="panel" id="panel-0">
+            <div class="info-box" id="info-0">Scanning...</div>
+            <div class="btn-row">
+                <button onclick="handleBtn(0, 1, 'desc')">INFO</button>
+                <button onclick="handleBtn(0, 1, 'hist')">HISTORY</button>
+                <button onclick="handleBtn(0, 1, 'art')">ARTIST</button>
+            </div>
+        </div>
+
+        <div class="panel" id="panel-1">
+            <div class="info-box" id="info-1">Scanning...</div>
+            <div class="btn-row">
+                <button onclick="handleBtn(1, 2, 'desc')">INFO</button>
+                <button onclick="handleBtn(1, 2, 'hist')">HISTORY</button>
+                <button onclick="handleBtn(1, 2, 'art')">ARTIST</button>
+            </div>
+        </div>
+
+        <div class="panel" id="panel-2">
+            <div class="info-box" id="info-2">Scanning...</div>
+            <div class="btn-row">
+                <button onclick="handleBtn(2, 3, 'desc')">INFO</button>
+                <button onclick="handleBtn(2, 3, 'hist')">HISTORY</button>
+                <button onclick="handleBtn(2, 3, 'art')">ARTIST</button>
+            </div>
+        </div>
+
+    </div>
 
     <script>
-        const TOTAL_PAINTINGS = 3;
-        const scene = document.querySelector('a-scene');
+        const paintingData = {};
+        const activeAnchors = {};
 
-
-        // 1. Generate Targets
-        for (let i = 0; i < TOTAL_PAINTINGS; i++) {
-            let entity = document.createElement('a-entity');
-            entity.setAttribute('mindar-image-target', `targetIndex: ${i}`);
-
-            entity.userData = { paintingData: null };
-
-            // --- Info Panel and Text ---
-            let infoPanel = document.createElement('a-plane');
-            infoPanel.setAttribute('position', '0 -0.8 0');
-            infoPanel.setAttribute('width', '1.4');
-            infoPanel.setAttribute('height', '0.6');
-            infoPanel.setAttribute('color', '#111');
-            infoPanel.setAttribute('opacity', '0.85');
-            entity.appendChild(infoPanel);
-
-            let infoText = document.createElement('a-text');
-            infoText.setAttribute('position', '0 -0.75 0.05');
-            infoText.setAttribute('align', 'center');
-            infoText.setAttribute('color', 'white');
-            infoText.setAttribute('width', '1.3');
-            infoText.setAttribute('value', 'Scanning...');
-            entity.appendChild(infoText);
-
-            function createButton(label, xPos, sectionKey) {
-                let btn = document.createElement('a-plane');
-                btn.setAttribute('position', `${xPos} -1.2 0.1`);
-                btn.setAttribute('width', '0.4');
-                btn.setAttribute('height', '0.2');
-                btn.setAttribute('color', '#333');
-                btn.setAttribute('class', 'clickable');
-                btn.setAttribute('opacity', '0.9');
-
-                let btnText = document.createElement('a-text');
-                btnText.setAttribute('value', label);
-                btnText.setAttribute('align', 'center');
-                btnText.setAttribute('color', '#FFD700');
-                btnText.setAttribute('width', '1.5');
-                btnText.setAttribute('position', '0 0 0.01');
-                btn.appendChild(btnText);
-
-                btn.addEventListener('click', () => {
-                    const data = entity.userData.paintingData;
-                    if (!data) return;
-
-                    switch (sectionKey) {
-                        case 'desc':
-                            infoText.setAttribute('value', data.description);
-                            break;
-                        case 'history':
-                            infoText.setAttribute('value', data.history);
-                            break;
-                        case 'artist':
-                            infoText.setAttribute('value', "Artist: " + data.artist);
-                            break;
-                    }
-                });
-
-                entity.appendChild(btn);
-            }
-
-            createButton("INFO", -0.5, 'desc');
-            createButton("HISTORY", 0, 'history');
-            createButton("ARTIST", 0.5, 'artist');
-
-            entity.addEventListener("targetFound", () => {
-                let db_id = i + 1;
-                fetch(`get_painting.php?id=${db_id}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        entity.userData.paintingData = data;
-                        infoText.setAttribute('value', data.title);
-                    });
-            });
-
-            scene.appendChild(entity);
+        function setInfo(panelIndex, text) {
+            document.querySelector(`#info-${panelIndex}`).textContent = text;
         }
 
+        function handleBtn(panelIndex, dbId, type) {
+            function render(d) {
+                if (type === 'desc') setInfo(panelIndex, d.description);
+                if (type === 'hist') setInfo(panelIndex, d.history);
+                if (type === 'art') setInfo(panelIndex, 'Artist: ' + d.artist + ' (' + d.year + ')');
+            }
+
+            if (paintingData[dbId]) {
+                render(paintingData[dbId]);
+            } else {
+                setInfo(panelIndex, 'Loading...');
+                fetch(`get_painting.php?id=${dbId}`)
+                    .then(r => r.json())
+                    .then(d => { paintingData[dbId] = d; render(d); })
+                    .catch(() => setInfo(panelIndex, 'Failed to load.'));
+            }
+        }
+
+        // Three.js world-to-screen projection
+        function worldToScreen(threeCamera, object3D) {
+            const vec = new THREE.Vector3();
+            object3D.getWorldPosition(vec);
+            vec.project(threeCamera);
+
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            return {
+                x: (vec.x * 0.5 + 0.5) * w,
+                y: (vec.y * -0.5 + 0.5) * h
+            };
+        }
+
+        // Animation loop: reposition each active panel to track its anchor
+        function trackPanels() {
+            const sceneEl = document.querySelector('#scene');
+            const camera = sceneEl.camera; // THREE.Camera from A-Frame
+
+            if (camera) {
+                for (const [panelIndex, anchorEl] of Object.entries(activeAnchors)) {
+                    const panel = document.querySelector(`#panel-${panelIndex}`);
+                    const obj3d = anchorEl.object3D;
+                    const pos = worldToScreen(camera, obj3d);
+
+                    // Position panel so its top-center sits at the projected point
+                    panel.style.left = pos.x + 'px';
+                    panel.style.top = pos.y + 'px';
+                }
+            }
+
+            requestAnimationFrame(trackPanels);
+        }
+
+        function setup(entIndex, panelIndex, dbId) {
+            const ent = document.querySelector(`#ent-${entIndex}`);
+            const anchorEl = document.querySelector(`#anchor-${entIndex}`);
+            const panel = document.querySelector(`#panel-${panelIndex}`);
+
+            ent.addEventListener('targetFound', () => {
+                activeAnchors[panelIndex] = anchorEl;
+                panel.classList.add('active');
+
+                if (paintingData[dbId]) {
+                    setInfo(panelIndex, paintingData[dbId].title);
+                } else {
+                    setInfo(panelIndex, 'Loading...');
+                    fetch(`get_painting.php?id=${dbId}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            paintingData[dbId] = data;
+                            setInfo(panelIndex, data.title);
+                        })
+                        .catch(() => setInfo(panelIndex, 'Failed to load.'));
+                }
+            });
+
+            ent.addEventListener('targetLost', () => {
+                delete activeAnchors[panelIndex];
+                panel.classList.remove('active');
+                setInfo(panelIndex, 'Scanning...');
+            });
+        }
+
+        setup(0, 0, 1);
+        setup(1, 1, 2);
+        setup(2, 2, 3);
+
+        document.querySelector('#scene').addEventListener('loaded', () => {
+            trackPanels();
+        });
     </script>
-</body>67
+
+</body>
 
 </html>
