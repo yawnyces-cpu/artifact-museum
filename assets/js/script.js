@@ -1,26 +1,42 @@
-
 'use strict';
 
 /* ─────────────────────────────────────────────────────────────
    TARGET → QR MAP
-   Index must match the order images were compiled into targets.mind
 ───────────────────────────────────────────────────────────── */
 const TARGET_QR_MAP = {
   0: 'ARTIFACT-PAINT-001',   // Spoliarium
   1: 'ARTIFACT-PAINT-002',   // The Parisian Life
   2: 'ARTIFACT-PAINT-003',   // Blood Compact
-  // 3: 'ARTIFACT-PAINT-004', ← add more here
 };
 
-const LANGS       = ['EN', 'KR', 'JP', 'CH'];
-let   currentLang = 'EN';
+const LANGS = ['EN', 'KR', 'JP', 'CH'];
+let currentLang = 'EN';
 
 const paintingCache = new Map();
+const activeOverlays = new Set();
 
-const openPanels = new Set();
+/* ─────────────────────────────────────────────────────────────
+   API_BASE — works for ALL common local setups:
+     XAMPP/WAMP root:   http://localhost/artifact/
+     php -S localhost:8000 from project root
+     XAMPP subfolder:   http://localhost/myproject/
+   
+   Strategy: derive the path to /api/ relative to index.html's
+   actual location so it works no matter the subfolder depth.
+───────────────────────────────────────────────────────────── */
+const API_BASE = (() => {
+  // window.location.href when index.html is open, e.g.:
+  //   http://localhost/artifact/index.html  → .../artifact/api
+  //   http://localhost:8000/index.html      → .../api
+  const href = window.location.href;
+  // Strip filename + query, keep trailing slash on the folder
+  const folder = href.substring(0, href.lastIndexOf('/') + 1);
+  return folder + 'api';
+})();
 
-const API_BASE = 'api';
-
+/* ─────────────────────────────────────────────────────────────
+   API
+───────────────────────────────────────────────────────────── */
 async function fetchPaintingData(qrValue, langCode) {
   const key = `${qrValue}::${langCode}`;
   if (paintingCache.has(key)) return paintingCache.get(key);
@@ -28,16 +44,37 @@ async function fetchPaintingData(qrValue, langCode) {
   const url = `${API_BASE}/get_painting.php?` +
     new URLSearchParams({ qr_value: qrValue, language_code: langCode });
 
-  const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  console.log('[ArtiFact] Fetching:', url);   // visible in DevTools → Console
 
-  const data = await res.json();
-  if (!data.success) throw new Error(data.error || 'API error');
+  let res;
+  try {
+    res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  } catch (networkErr) {
+    throw new Error('Network error — is PHP server running? ' + networkErr.message);
+  }
+
+  if (!res.ok) {
+    let body = '';
+    try { body = await res.text(); } catch (_) { }
+    throw new Error(`HTTP ${res.status} — ${body.slice(0, 300)}`);
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (parseErr) {
+    throw new Error('API returned non-JSON (PHP error?). ' + parseErr.message);
+  }
+
+  if (!data.success) throw new Error(data.error || 'API returned success:false');
 
   paintingCache.set(key, data);
   return data;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   HELPERS
+───────────────────────────────────────────────────────────── */
 function truncate(str, maxChars) {
   if (!str) return '';
   str = str.trim();
@@ -45,7 +82,7 @@ function truncate(str, maxChars) {
 }
 
 let _toastTimer = null;
-function showToast(msg, ms = 3000) {
+function showToast(msg, ms = 3500) {
   const el = document.getElementById('toast');
   if (!el) return;
   clearTimeout(_toastTimer);
@@ -55,9 +92,9 @@ function showToast(msg, ms = 3000) {
 }
 
 function setLoadingProgress(pct, msg) {
-  const bar    = document.getElementById('loading-bar');
+  const bar = document.getElementById('loading-bar');
   const status = document.getElementById('loading-status');
-  if (bar)    bar.style.width = pct + '%';
+  if (bar) bar.style.width = pct + '%';
   if (status && msg) status.textContent = msg;
 }
 
@@ -75,255 +112,376 @@ function showHtmlEl(id, show) {
   show ? el.classList.remove('hidden') : el.classList.add('hidden');
 }
 
+/* ─────────────────────────────────────────────────────────────
+   OVERLAY HELPERS
+───────────────────────────────────────────────────────────── */
+
+/**
+ * trackerMap  — idx → { el, anchorEl, active, screenX, screenY }
+ * Populated by ar-target.init(); read each frame by the rAF loop.
+ */
+const trackerMap = {};
+
+function showOverlay(idx) {
+  const ov = document.getElementById(`overlay-${idx}`);
+  if (ov) {
+    ov.classList.remove('hidden');
+    // Trigger re-animation on re-detection
+    ov.classList.remove('overlay-visible');
+    void ov.offsetWidth;                     // force reflow
+    ov.classList.add('overlay-visible');
+  }
+  activeOverlays.add(idx);
+}
+
+function hideOverlay(idx) {
+  const ov = document.getElementById(`overlay-${idx}`);
+  if (ov) {
+    ov.classList.add('hidden');
+    ov.classList.remove('overlay-visible');
+  }
+  closePanel(idx);
+  activeOverlays.delete(idx);
+}
+
+function setOverlayTitle(idx, text) {
+  const el = document.getElementById(`ov${idx}-title`);
+  if (el) el.textContent = text || '—';
+}
+
+function setOverlayLang(idx, lang) {
+  const el = document.getElementById(`ov${idx}-lang`);
+  if (el) el.textContent = lang;
+}
+
+function openPanel(idx, label, content) {
+  const panel = document.getElementById(`panel-${idx}`);
+  const labelEl = document.getElementById(`p${idx}-label`);
+  const contEl = document.getElementById(`p${idx}-content`);
+  if (!panel) return;
+  if (labelEl) labelEl.textContent = label;
+  if (contEl) contEl.textContent = content;
+  panel.classList.remove('hidden');
+}
+
+function closePanel(idx) {
+  const panel = document.getElementById(`panel-${idx}`);
+  if (panel) {
+    panel.classList.add('hidden');
+    panel.dataset.lastAction = '';
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PANEL CONTENT BUILDER
+───────────────────────────────────────────────────────────── */
+const ACTION_LABELS = {
+  artist: 'ARTIST',
+  description: 'ABOUT THIS WORK',
+  history: 'HISTORICAL BACKGROUND',
+};
+
+function getPanelText(data, action) {
+  switch (action) {
+    case 'artist': {
+      const year = data.year_created && data.year_created !== 0
+        ? `b. ${data.year_created}`
+        : '';
+      return [data.artist_name, year].filter(Boolean).join('\n');
+    }
+    case 'description': return data.description_text?.trim() || '';
+    case 'history': return data.historical_background_text?.trim() || '';
+    default: return '';
+  }
+}
+
+function syncLangUI(lang) {
+  document.querySelectorAll('.lang-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.lang === lang)
+  );
+  Object.keys(TARGET_QR_MAP).forEach(i => setOverlayLang(i, lang));
+}
+
+/* ─────────────────────────────────────────────────────────────
+   WORLD → SCREEN PROJECTION
+   Projects a THREE.js world-space position through the A-Frame
+   camera's view+projection matrices to get CSS pixel coords.
+───────────────────────────────────────────────────────────── */
+const _worldPos = new THREE.Vector3();
+const _screenVec = new THREE.Vector3();
+
+/**
+ * Returns { x, y } in CSS pixels (origin: top-left of viewport).
+ * Returns null if the scene/camera isn't ready yet.
+ *
+ * @param {THREE.Object3D} object3D  — the A-Frame entity's object3D
+ * @param {number} worldOffsetY      — optional vertical world-unit nudge
+ *                                     (use to push the overlay below the target)
+ */
+function worldToScreen(object3D) {
+  const scene = document.querySelector('a-scene');
+  if (!scene || !scene.camera) return null;
+
+  const camera = scene.camera;
+  const renderer = scene.renderer;
+  if (!renderer) return null;
+
+  object3D.getWorldPosition(_worldPos);
+  _screenVec.copy(_worldPos).project(camera);
+
+  const canvas = renderer.domElement;
+  const w = canvas.clientWidth || window.innerWidth;
+  const h = canvas.clientHeight || window.innerHeight;
+
+  return {
+    x: (_screenVec.x + 1) / 2 * w,
+    y: (-_screenVec.y + 1) / 2 * h,
+  };
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TRACKING LOOP
+   Runs every animation frame; moves each active overlay to
+   the projected screen position of its A-Frame target entity.
+───────────────────────────────────────────────────────────── */
+
+// ── Position tuning ──────────────────────────────────────────
+//
+//  These are plain CSS pixel offsets applied AFTER the target centre
+//  is projected onto the screen. They are always the same number of
+//  pixels regardless of how far away the camera is.
+//
+const OVERLAY_OFFSET_Y = 100;    
+const OVERLAY_OFFSET_X = 0;    
+
+// Lerp factor — closer to 1 = snappier, closer to 0 = smoother/laggy
+const LERP = 0.38;
+
+function trackingLoop() {
+  for (const [idxStr, tracker] of Object.entries(trackerMap)) {
+    const idx = parseInt(idxStr, 10);
+    if (!tracker.active || !tracker.object3D) continue;
+
+    const ov = document.getElementById(`overlay-${idx}`);
+    if (!ov || ov.classList.contains('hidden')) continue;
+
+    // Project the entity's world-space centre to screen pixels
+    const centre = worldToScreen(tracker.object3D);
+    if (!centre) continue;
+
+    // Apply the screen-space offset so the overlay sits BELOW the painting
+    const pos = {
+      x: centre.x + OVERLAY_OFFSET_X,
+      y: centre.y + OVERLAY_OFFSET_Y,
+    };
+
+    // Initialise on first frame so there's no lerp-from-zero jump
+    if (tracker.screenX === undefined) {
+      tracker.screenX = pos.x;
+      tracker.screenY = pos.y;
+    }
+
+    // Smooth interpolation — kills per-frame jitter from MindAR
+    tracker.screenX += (pos.x - tracker.screenX) * LERP;
+    tracker.screenY += (pos.y - tracker.screenY) * LERP;
+
+    // Clamp so the overlay never slides entirely off-screen
+    const ovW = ov.offsetWidth || 320;
+    const ovH = ov.offsetHeight || 120;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const cx = Math.max(ovW / 2 + 8, Math.min(vw - ovW / 2 - 8, tracker.screenX));
+    const cy = Math.max(8, Math.min(vh - ovH - 8, tracker.screenY));
+
+    ov.style.left = `${cx}px`;
+    ov.style.top = `${cy}px`;
+    ov.style.transform = 'translate(-50%, 0)';
+  }
+
+  requestAnimationFrame(trackingLoop);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   AFRAME COMPONENT — ar-target
+   Registers the entity in trackerMap and fires show/hide.
+───────────────────────────────────────────────────────────── */
 AFRAME.registerComponent('ar-target', {
   schema: {
     qrValue: { type: 'string', default: '' },
-    idx:     { type: 'int',    default: 0  },
+    idx: { type: 'int', default: 0 },
   },
 
   init: function () {
     const { qrValue, idx } = this.data;
 
+    // Register this entity so the tracking loop can find its 3D object
+    trackerMap[idx] = {
+      object3D: this.el.object3D,
+      active: false,
+      screenX: undefined,
+      screenY: undefined,
+    };
+
     this.el.addEventListener('targetFound', async () => {
       console.log(`[ArtiFact] Target ${idx} found — ${qrValue}`);
+      trackerMap[idx].active = true;
+      trackerMap[idx].screenX = undefined;  // reset so first frame snaps
+      trackerMap[idx].screenY = undefined;
+      showOverlay(idx);
       showHtmlEl('scan-hint', false);
       showHtmlEl('lang-switcher', true);
 
       try {
         const data = await fetchPaintingData(qrValue, currentLang);
-        const titleEl = document.getElementById(`t${idx}-title`);
-        if (titleEl) {
-          titleEl.setAttribute('value', truncate(data.title_text || data.painting_title, 28));
-        }
-        if (data.is_fallback_language) {
-          showToast('Translation unavailable — showing English');
-        }
+        setOverlayTitle(idx, data.title_text || data.painting_title);
+        if (data.is_fallback_language) showToast('Translation unavailable — showing English');
       } catch (err) {
-        console.warn(`[ArtiFact] Pre-fetch failed for target ${idx}:`, err);
+        console.error(`[ArtiFact] Pre-fetch failed:`, err);
+        showToast('Could not load painting — ' + err.message);
       }
     });
 
     this.el.addEventListener('targetLost', () => {
       console.log(`[ArtiFact] Target ${idx} lost`);
-
-      const panel = document.getElementById(`panel-${idx}`);
-      if (panel) panel.setAttribute('visible', false);
-      openPanels.delete(idx);
-
-      const titleEl = document.getElementById(`t${idx}-title`);
-      if (titleEl) titleEl.setAttribute('value', '—');
-
+      trackerMap[idx].active = false;
+      hideOverlay(idx);
+      setOverlayTitle(idx, '—');
       setTimeout(() => {
-        if (openPanels.size === 0) showHtmlEl('scan-hint', true);
+        if (activeOverlays.size === 0) showHtmlEl('scan-hint', true);
       }, 400);
     });
   },
 });
 
-AFRAME.registerComponent('painting-btn', {
-  schema: {
-    action: { type: 'string', default: '' },
-    idx:    { type: 'int',    default: 0  },
-  },
+/* ─────────────────────────────────────────────────────────────
+   DOM READY — safe whether script is in <head> or <body>
+───────────────────────────────────────────────────────────── */
+function onDOMReady(fn) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fn, { once: true });
+  } else {
+    fn();
+  }
+}
 
-  init: function () {
-    this.el.addEventListener('click', this.handleClick.bind(this));
+onDOMReady(() => {
 
-    this.el.addEventListener('mouseenter', () => {
-      this.el.setAttribute('material', 'color: #e4c97e');
-    });
-    this.el.addEventListener('mouseleave', () => {
-      
-      const baseColor = this.data.action === 'language' ? '#0b1630' : '#c9a84c';
-      this.el.setAttribute('material', `color: ${baseColor}`);
-    });
-  },
+  // Confirm API_BASE in console so you can verify immediately
+  console.log('[ArtiFact] API_BASE =', API_BASE);
 
-  handleClick: async function () {
-    const { action, idx } = this.data;
-    const qrValue = TARGET_QR_MAP[idx];
+  /* ── Action buttons ── */
+  document.querySelectorAll('.ar-action-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const action = btn.dataset.action;
+      const qrValue = TARGET_QR_MAP[idx];
+      if (!qrValue) return;
 
-    if (!qrValue) {
-      console.warn(`[ArtiFact] No QR mapping for target idx ${idx}`);
-      return;
-    }
+      const label = ACTION_LABELS[action] || action.toUpperCase();
+      openPanel(idx, label, 'Loading…');
+      document.getElementById(`panel-${idx}`).dataset.lastAction = action;
 
-    // ── Language toggle: no panel, just cycle and re-fetch title ────────────
-    if (action === 'language') {
-      const nextIdx  = (LANGS.indexOf(currentLang) + 1) % LANGS.length;
-      currentLang    = LANGS[nextIdx];
-
-      // Update ALL lang button labels (all visible targets)
-      Object.keys(TARGET_QR_MAP).forEach(i => {
-        const labelEl = document.getElementById(`t${i}-lang-label`);
-        if (labelEl) labelEl.setAttribute('value', currentLang);
-      });
-
-      // Update HTML switcher buttons
-      document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.lang === currentLang);
-      });
-
-      showToast(`Language: ${currentLang}`);
-
-      // Refresh open panel and title with new language
       try {
         const data = await fetchPaintingData(qrValue, currentLang);
-        const titleEl = document.getElementById(`t${idx}-title`);
-        if (titleEl) titleEl.setAttribute('value', truncate(data.title_text || data.painting_title, 28));
+        const contEl = document.getElementById(`p${idx}-content`);
+        if (contEl) contEl.textContent = getPanelText(data, action);
+        if (data.is_fallback_language) showToast('Translation unavailable — showing English');
+      } catch (err) {
+        console.error('[ArtiFact] Action fetch failed:', err);
+        const contEl = document.getElementById(`p${idx}-content`);
+        if (contEl) contEl.textContent = 'Could not load data.\n' + err.message;
+        showToast('API error — see console (F12)');
+      }
+    });
+  });
 
-        // If a panel is open for this target, refresh its content
+  /* ── Language cycle buttons ── */
+  document.querySelectorAll('.ar-lang-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      currentLang = LANGS[(LANGS.indexOf(currentLang) + 1) % LANGS.length];
+      syncLangUI(currentLang);
+      showToast(`Language: ${currentLang}`);
+
+      const qrValue = TARGET_QR_MAP[idx];
+      if (!qrValue) return;
+      try {
+        const data = await fetchPaintingData(qrValue, currentLang);
+        setOverlayTitle(idx, data.title_text || data.painting_title);
         const panel = document.getElementById(`panel-${idx}`);
-        if (panel && panel.getAttribute('visible') === true) {
-          const labelEl   = document.getElementById(`p${idx}-label`);
-          const contentEl = document.getElementById(`p${idx}-content`);
-          if (labelEl && contentEl) {
-            const currentAction = panel.dataset.lastAction || 'artist';
-            const text = getPanelText(data, currentAction);
-            contentEl.setAttribute('value', text);
-          }
+        if (panel && !panel.classList.contains('hidden') && panel.dataset.lastAction) {
+          const contEl = document.getElementById(`p${idx}-content`);
+          if (contEl) contEl.textContent = getPanelText(data, panel.dataset.lastAction);
         }
       } catch (err) {
         console.warn('[ArtiFact] Language refresh failed:', err);
       }
-      return;
-    }
-
-    // ── Info actions: fetch → populate → show panel ──────────────────────────
-    const panel    = document.getElementById(`panel-${idx}`);
-    const labelEl  = document.getElementById(`p${idx}-label`);
-    const contentEl = document.getElementById(`p${idx}-content`);
-
-    if (!panel || !labelEl || !contentEl) return;
-
-    // Show panel immediately with "Loading…"
-    panel.setAttribute('visible', true);
-    panel.dataset.lastAction = action;
-    openPanels.add(idx);
-    labelEl.setAttribute('value',   ACTION_LABELS[action] || action.toUpperCase());
-    contentEl.setAttribute('value', 'Loading…');
-
-    try {
-      const data = await fetchPaintingData(qrValue, currentLang);
-      const text = getPanelText(data, action);
-      contentEl.setAttribute('value', text);
-
-      if (data.is_fallback_language) {
-        showToast('Translation unavailable — showing English');
-      }
-    } catch (err) {
-      console.error('[ArtiFact] API fetch failed:', err);
-      contentEl.setAttribute('value', 'Could not load data.\nCheck server connection.');
-    }
-  },
-});
-
-
-AFRAME.registerComponent('close-panel', {
-  schema: {
-    idx: { type: 'int', default: 0 },
-  },
-  init: function () {
-    this.el.addEventListener('click', () => {
-      const panel = document.getElementById(`panel-${this.data.idx}`);
-      if (panel) panel.setAttribute('visible', false);
-      openPanels.delete(this.data.idx);
     });
-
-    this.el.addEventListener('mouseenter', () =>
-      this.el.setAttribute('material', 'color: #e4c97e')
-    );
-    this.el.addEventListener('mouseleave', () =>
-      this.el.setAttribute('material', 'color: #c9a84c')
-    );
-  },
-});
-
-const ACTION_LABELS = {
-  artist:      'ARTIST',
-  description: 'ABOUT THIS WORK',
-  history:     'HISTORICAL BACKGROUND',
-};
-
-function getPanelText(data, action) {
-  switch (action) {
-    case 'artist':
-      // Keep short — just name and year
-      return `${data.artist_name}\nb. ${data.year_created}`;
-
-    case 'description':
-      // ~300 chars comfortably fits with wrap-count="34"
-      return truncate(data.description_text, 300);
-
-    case 'history':
-      // History text can be very long — truncate to ~400 chars
-      return truncate(data.historical_background_text, 400);
-
-    default:
-      return '';
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  setLoadingProgress(30, 'Loading AR libraries…');
-
-  const scene = document.querySelector('a-scene');
-  if (!scene) {
-    console.error('[ArtiFact] <a-scene> not found.');
-    return;
-  }
-
-  scene.addEventListener('loaded', () => {
-    setLoadingProgress(80, 'Starting camera…');
   });
 
+  /* ── Close buttons ── */
+  document.querySelectorAll('.ar-panel-close').forEach(btn => {
+    btn.addEventListener('click', () => closePanel(parseInt(btn.dataset.idx, 10)));
+  });
+
+  /* ── HTML language switcher ── */
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const lang = btn.dataset.lang;
+      if (lang === currentLang) return;
+      currentLang = lang;
+      syncLangUI(lang);
+      showToast(`Language: ${lang}`);
+
+      // Refresh every active overlay with the new language
+      for (const idx of activeOverlays) {
+        const qrValue = TARGET_QR_MAP[idx];
+        if (!qrValue) continue;
+        try {
+          const data = await fetchPaintingData(qrValue, lang);
+          setOverlayTitle(idx, data.title_text || data.painting_title);
+          if (data.is_fallback_language) showToast('Translation unavailable — showing English');
+
+          // If a panel is open, refresh its content too
+          const panel = document.getElementById(`panel-${idx}`);
+          if (panel && !panel.classList.contains('hidden') && panel.dataset.lastAction) {
+            const contEl = document.getElementById(`p${idx}-content`);
+            if (contEl) contEl.textContent = getPanelText(data, panel.dataset.lastAction);
+          }
+        } catch (err) {
+          console.warn(`[ArtiFact] Language refresh failed for idx ${idx}:`, err);
+        }
+      }
+    });
+  });
+
+  /* ── Scene lifecycle ── */
+  setLoadingProgress(30, 'Loading AR libraries…');
+  const scene = document.querySelector('a-scene');
+  if (!scene) { console.error('[ArtiFact] <a-scene> not found.'); return; }
+
+  scene.addEventListener('loaded', () => setLoadingProgress(80, 'Starting camera…'));
   scene.addEventListener('arReady', () => {
     console.log('[ArtiFact] AR ready');
-    setLoadingProgress(100, 'Ready');
     hideLoadingScreen();
     showHtmlEl('scan-hint', true);
+    // Start the world→screen projection loop
+    requestAnimationFrame(trackingLoop);
   });
-
   scene.addEventListener('arError', (e) => {
     console.error('[ArtiFact] AR error:', e);
-    setLoadingProgress(0, 'AR failed — check console (F12)');
-    showToast('AR failed to start. Check camera permission and targets.mind path.');
+    setLoadingProgress(0, 'AR failed — check console');
+    showToast('AR failed to start. Check camera permission.');
     hideLoadingScreen();
   });
 
-  // Fallback: if arReady never fires within 15 s, hide loading anyway
   setTimeout(() => {
     const ls = document.getElementById('loading-screen');
     if (ls && !ls.classList.contains('fade-out')) {
-      console.warn('[ArtiFact] arReady timeout — hiding loading screen');
+      console.warn('[ArtiFact] arReady timeout — forcing hide');
       hideLoadingScreen();
       showHtmlEl('scan-hint', true);
     }
   }, 15000);
-});
-
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.lang-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const lang = btn.dataset.lang;
-      if (lang === currentLang) return;
-      currentLang = lang;
-
-      // Sync HTML buttons
-      document.querySelectorAll('.lang-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.lang === lang)
-      );
-
-      // Sync all 3D lang labels and invalidate cached panel content
-      Object.keys(TARGET_QR_MAP).forEach(i => {
-        const labelEl = document.getElementById(`t${i}-lang-label`);
-        if (labelEl) labelEl.setAttribute('value', lang);
-      });
-
-      // Bust title cache so next targetFound re-fetches in new lang
-  
-      showToast(`Language: ${lang}`);
-    });
-  });
 });

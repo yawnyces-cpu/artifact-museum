@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -12,205 +13,173 @@
   <script src="assets/js/script.js"></script>
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
+
 <body>
 
-<div id="loading-screen" class="loading-screen">
-  <div class="loading-inner">
-    <div class="loading-emblem">
-      <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="40" cy="40" r="36" stroke="#c9a84c" stroke-width="2"
-          fill="none" stroke-dasharray="226" class="emblem-ring"/>
-        <path d="M40 12 L46 32 L68 32 L51 45 L57 65 L40 52 L23 65 L29 45 L12 32 L34 32 Z"
-          fill="#c9a84c" opacity="0.12"/>
-        <path d="M40 20 L44 30 L55 30 L46 37 L49 48 L40 41 L31 48 L34 37 L25 30 L36 30 Z"
-          fill="#c9a84c"/>
-      </svg>
+  <!-- ═══════════════════════════════════════════════════════════
+     LOADING SCREEN
+═══════════════════════════════════════════════════════════ -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-inner">
+      <div class="loading-emblem">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="36" stroke="#c9a84c" stroke-width="2" fill="none" stroke-dasharray="226"
+            class="emblem-ring" />
+          <path d="M40 12 L46 32 L68 32 L51 45 L57 65 L40 52 L23 65 L29 45 L12 32 L34 32 Z" fill="#c9a84c"
+            opacity="0.12" />
+          <path d="M40 20 L44 30 L55 30 L46 37 L49 48 L40 41 L31 48 L34 37 L25 30 L36 30 Z" fill="#c9a84c" />
+        </svg>
+      </div>
+      <p class="loading-title">ArtiFact</p>
+      <p class="loading-sub">Philippine National Museum</p>
+      <div class="loading-bar-track">
+        <div class="loading-bar-fill" id="loading-bar"></div>
+      </div>
+      <p class="loading-status" id="loading-status">Initialising AR engine…</p>
     </div>
-    <p class="loading-title">ArtiFact</p>
-    <p class="loading-sub">Philippine National Museum</p>
-    <div class="loading-bar-track">
-      <div class="loading-bar-fill" id="loading-bar"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+     SCAN HINT
+═══════════════════════════════════════════════════════════ -->
+  <div id="scan-hint" class="scan-hint hidden">
+    <div class="scan-frame">
+      <span class="scan-corner tl"></span>
+      <span class="scan-corner tr"></span>
+      <span class="scan-corner bl"></span>
+      <span class="scan-corner br"></span>
+      <p>Point camera at artwork label</p>
     </div>
-    <p class="loading-status" id="loading-status">Initialising AR engine…</p>
   </div>
-</div>
 
-<div id="lang-switcher" class="lang-switcher hidden">
-  <button class="lang-btn active" data-lang="EN">EN</button>
-  <button class="lang-btn" data-lang="KR">한</button>
-  <button class="lang-btn" data-lang="JP">日</button>
-  <button class="lang-btn" data-lang="CH">中</button>
-</div>
-
-<div id="scan-hint" class="scan-hint hidden">
-  <div class="scan-frame">
-    <span class="scan-corner tl"></span>
-    <span class="scan-corner tr"></span>
-    <span class="scan-corner bl"></span>
-    <span class="scan-corner br"></span>
-    <p>Point camera at artwork label</p>
+  <!-- ═══════════════════════════════════════════════════════════
+     LANGUAGE SWITCHER
+═══════════════════════════════════════════════════════════ -->
+  <div id="lang-switcher" class="lang-switcher hidden">
+    <button class="lang-btn active" data-lang="EN">EN</button>
+    <button class="lang-btn" data-lang="KR">한</button>
+    <button class="lang-btn" data-lang="JP">日</button>
+    <button class="lang-btn" data-lang="CH">中</button>
   </div>
-</div>
 
-<div id="toast" class="toast" role="alert" aria-live="polite"></div>
+  <!-- ═══════════════════════════════════════════════════════════
+     TOAST
+═══════════════════════════════════════════════════════════ -->
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
-<a-scene
-  mindar-image="imageTargetSrc: assets/targets/targets.mind;
+  <!-- ═══════════════════════════════════════════════════════════
+     FLOATING AR OVERLAY  (one per target, hidden by default)
+     Positioned via CSS at the bottom of the viewport.
+     script.js shows/hides these on targetFound / targetLost.
+═══════════════════════════════════════════════════════════ -->
+
+  <div class="ar-overlay hidden" id="overlay-0" data-idx="0">
+
+    <!-- Artwork title banner -->
+    <div class="ar-title-bar">
+      <span class="ar-title-text" id="ov0-title">—</span>
+    </div>
+
+    <!-- Action buttons row -->
+    <div class="ar-btn-row">
+      <button class="ar-action-btn" data-action="artist" data-idx="0">ARTIST</button>
+      <button class="ar-action-btn" data-action="description" data-idx="0">INFO</button>
+      <button class="ar-action-btn" data-action="history" data-idx="0">HISTORY</button>
+      <button class="ar-lang-btn" data-idx="0" id="ov0-lang">EN</button>
+    </div>
+
+    <!-- Info panel (hidden until an action button is tapped) -->
+    <div class="ar-panel hidden" id="panel-0">
+      <div class="ar-panel-header">
+        <span class="ar-panel-label" id="p0-label"></span>
+        <button class="ar-panel-close" data-idx="0">✕</button>
+      </div>
+      <div class="ar-panel-divider"></div>
+      <p class="ar-panel-content" id="p0-content">Loading…</p>
+    </div>
+
+  </div><!-- /overlay-0 -->
+
+
+  <div class="ar-overlay hidden" id="overlay-1" data-idx="1">
+
+    <div class="ar-title-bar">
+      <span class="ar-title-text" id="ov1-title">—</span>
+    </div>
+
+    <div class="ar-btn-row">
+      <button class="ar-action-btn" data-action="artist" data-idx="1">ARTIST</button>
+      <button class="ar-action-btn" data-action="description" data-idx="1">INFO</button>
+      <button class="ar-action-btn" data-action="history" data-idx="1">HISTORY</button>
+      <button class="ar-lang-btn" data-idx="1" id="ov1-lang">EN</button>
+    </div>
+
+    <div class="ar-panel hidden" id="panel-1">
+      <div class="ar-panel-header">
+        <span class="ar-panel-label" id="p1-label"></span>
+        <button class="ar-panel-close" data-idx="1">✕</button>
+      </div>
+      <div class="ar-panel-divider"></div>
+      <p class="ar-panel-content" id="p1-content">Loading…</p>
+    </div>
+
+  </div><!-- /overlay-1 -->
+
+
+  <div class="ar-overlay hidden" id="overlay-2" data-idx="2">
+
+    <div class="ar-title-bar">
+      <span class="ar-title-text" id="ov2-title">—</span>
+    </div>
+
+    <div class="ar-btn-row">
+      <button class="ar-action-btn" data-action="artist" data-idx="2">ARTIST</button>
+      <button class="ar-action-btn" data-action="description" data-idx="2">INFO</button>
+      <button class="ar-action-btn" data-action="history" data-idx="2">HISTORY</button>
+      <button class="ar-lang-btn" data-idx="2" id="ov2-lang">EN</button>
+    </div>
+
+    <div class="ar-panel hidden" id="panel-2">
+      <div class="ar-panel-header">
+        <span class="ar-panel-label" id="p2-label"></span>
+        <button class="ar-panel-close" data-idx="2">✕</button>
+      </div>
+      <div class="ar-panel-divider"></div>
+      <p class="ar-panel-content" id="p2-content">Loading…</p>
+    </div>
+
+  </div><!-- /overlay-2 -->
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+     A-FRAME SCENE  — tracking only, no UI entities
+═══════════════════════════════════════════════════════════ -->
+  <a-scene mindar-image="imageTargetSrc: assets/targets/targets.mind;
                 uiScanning:     false;
                 uiLoading:      false;
                 filterMinCF:    0.001;
                 filterBeta:     1000;
                 warmupTolerance: 5;
-                missTolerance:  10;"
-  vr-mode-ui="enabled: false"
-  device-orientation-permission-ui="enabled: false"
-  loading-screen="enabled: false"
-  renderer="colorManagement: true; physicallyCorrectLights: true; alpha: true;">
+                missTolerance:  10;" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false"
+    loading-screen="enabled: false">
 
-  <a-assets timeout="15000"></a-assets>
+    <a-camera position="0 0 0" look-controls="enabled: false">
+    </a-camera>
 
-  <a-camera
-    position="0 0 0"
-    look-controls="enabled: false"
-    cursor="fuse: false; rayOrigin: mouse;"
-    raycaster="far: 10000; objects: .ar-btn;">
-  </a-camera>
-
-  <a-entity
-    id="target-0"
-    mindar-image-target="targetIndex: 0"
-    ar-target="qrValue: ARTIFACT-PAINT-001; idx: 0">
-
-    <a-plane position="0 0 0" width="1" height="0.75" material="opacity: 0; transparent: true; depthWrite: false;"></a-plane>
-
-    <a-entity position="0 0.49 0.01">
-      <a-plane width="0.82" height="0.115" material="color: #0a1628; opacity: 0.88; transparent: true;"></a-plane>
-      <a-plane width="0.82" height="0.003" position="0 0.056 0.001" material="color: #c9a84c; opacity: 1;"></a-plane>
-      <a-text id="t0-title" value="—" color="#c9a84c" align="center" width="0.75" position="0 0 0.002" wrap-count="24"></a-text>
+    <!-- Target 0 — Spoliarium -->
+    <a-entity id="target-0" mindar-image-target="targetIndex: 0" ar-target="qrValue: ARTIFACT-PAINT-001; idx: 0">
     </a-entity>
 
-    <a-entity id="panel-0" visible="false" position="0 0.02 0.04">
-      <a-plane width="0.96" height="0.64" material="color: #0b1630; opacity: 0.95; transparent: true;"></a-plane>
-      <a-plane width="0.96" height="0.004" position="0 0.322 0.001" material="color: #c9a84c; opacity: 1;"></a-plane>
-      <a-text id="p0-label" value="" color="#c9a84c" align="center" width="0.88" position="0 0.265 0.003" wrap-count="18" letter-spacing="3"></a-text>
-      <a-plane width="0.78" height="0.002" position="0 0.225 0.002" material="color: #c9a84c; opacity: 0.35;"></a-plane>
-      <a-text id="p0-content" value="" color="#f4f0e8" align="center" width="0.84" position="0 0.185 0.003" baseline="top" wrap-count="34" line-height="55"></a-text>
-      
-      <a-plane class="ar-btn" close-panel="idx: 0" width="0.2" height="0.068" position="0.355 -0.265 0.003" material="color: #c9a84c; opacity: 0.92; transparent: true;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-        <a-text value="CLOSE" color="#0a1628" align="center" width="0.55" position="0 0 0.002" wrap-count="6"></a-text>
-      </a-plane>
+    <!-- Target 1 — The Parisian Life -->
+    <a-entity id="target-1" mindar-image-target="targetIndex: 1" ar-target="qrValue: ARTIFACT-PAINT-002; idx: 1">
     </a-entity>
 
-    <a-plane class="ar-btn" painting-btn="action: artist; idx: 0" width="0.22" height="0.08" position="-0.36 -0.45 0.02" material="color: #c9a84c; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-      <a-text value="ARTIST" color="#0a1628" align="center" width="0.2" position="0 0 0.01" wrap-count="8"></a-text>
-    </a-plane>
-
-    <a-plane class="ar-btn" painting-btn="action: description; idx: 0" width="0.22" height="0.08" position="-0.12 -0.45 0.02" material="color: #c9a84c; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-      <a-text value="INFO" color="#0a1628" align="center" width="0.2" position="0 0 0.01" wrap-count="8"></a-text>
-    </a-plane>
-
-    <a-plane class="ar-btn" painting-btn="action: history; idx: 0" width="0.22" height="0.08" position="0.12 -0.45 0.02" material="color: #c9a84c; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-      <a-text value="HISTORY" color="#0a1628" align="center" width="0.2" position="0 0 0.01" wrap-count="8"></a-text>
-    </a-plane>
-
-    <a-plane width="0.22" height="0.08" position="0.36 -0.45 0.02" material="color: #c9a84c; shader: flat;">
-      <a-plane class="ar-btn" painting-btn="action: language; idx: 0" width="0.20" height="0.06" position="0 0 0.01" material="color: #0b1630; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-        <a-text id="t0-lang-label" value="EN" color="#c9a84c" align="center" width="0.18" position="0 0 0.01" wrap-count="6"></a-text>
-      </a-plane>
-    </a-plane>
-  </a-entity>
-
-
-  <a-entity
-    id="target-1"
-    mindar-image-target="targetIndex: 1"
-    ar-target="qrValue: ARTIFACT-PAINT-002; idx: 1">
-
-    <a-plane position="0 0 0" width="1" height="0.75" material="opacity: 0; transparent: true; depthWrite: false;"></a-plane>
-
-    <a-entity position="0 0.49 0.01">
-      <a-plane width="0.82" height="0.115" material="color: #0a1628; opacity: 0.88; transparent: true;"></a-plane>
-      <a-plane width="0.82" height="0.003" position="0 0.056 0.001" material="color: #c9a84c; opacity: 1;"></a-plane>
-      <a-text id="t1-title" value="—" color="#c9a84c" align="center" width="0.75" position="0 0 0.002" wrap-count="24"></a-text>
+    <!-- Target 2 — Blood Compact -->
+    <a-entity id="target-2" mindar-image-target="targetIndex: 2" ar-target="qrValue: ARTIFACT-PAINT-003; idx: 2">
     </a-entity>
 
-    <a-entity id="panel-1" visible="false" position="0 0.02 0.04">
-      <a-plane width="0.96" height="0.64" material="color: #0b1630; opacity: 0.95; transparent: true;"></a-plane>
-      <a-plane width="0.96" height="0.004" position="0 0.322 0.001" material="color: #c9a84c; opacity: 1;"></a-plane>
-      <a-text id="p1-label" value="" color="#c9a84c" align="center" width="0.88" position="0 0.265 0.003" wrap-count="18" letter-spacing="3"></a-text>
-      <a-plane width="0.78" height="0.002" position="0 0.225 0.002" material="color: #c9a84c; opacity: 0.35;"></a-plane>
-      <a-text id="p1-content" value="" color="#f4f0e8" align="center" width="0.84" position="0 0.185 0.003" baseline="top" wrap-count="34" line-height="55"></a-text>
-      
-      <a-plane class="ar-btn" close-panel="idx: 1" width="0.2" height="0.068" position="0.355 -0.265 0.003" material="color: #c9a84c; opacity: 0.92; transparent: true;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-        <a-text value="CLOSE" color="#0a1628" align="center" width="0.55" position="0 0 0.002" wrap-count="6"></a-text>
-      </a-plane>
-    </a-entity>
-
-    <a-plane class="ar-btn" painting-btn="action: artist; idx: 1" width="0.22" height="0.08" position="-0.36 -0.45 0.02" material="color: #c9a84c; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-      <a-text value="ARTIST" color="#0a1628" align="center" width="0.2" position="0 0 0.01" wrap-count="8"></a-text>
-    </a-plane>
-
-    <a-plane class="ar-btn" painting-btn="action: description; idx: 1" width="0.22" height="0.08" position="-0.12 -0.45 0.02" material="color: #c9a84c; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-      <a-text value="INFO" color="#0a1628" align="center" width="0.2" position="0 0 0.01" wrap-count="8"></a-text>
-    </a-plane>
-
-    <a-plane class="ar-btn" painting-btn="action: history; idx: 1" width="0.22" height="0.08" position="0.12 -0.45 0.02" material="color: #c9a84c; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-      <a-text value="HISTORY" color="#0a1628" align="center" width="0.2" position="0 0 0.01" wrap-count="8"></a-text>
-    </a-plane>
-
-    <a-plane width="0.22" height="0.08" position="0.36 -0.45 0.02" material="color: #c9a84c; shader: flat;">
-      <a-plane class="ar-btn" painting-btn="action: language; idx: 1" width="0.20" height="0.06" position="0 0 0.01" material="color: #0b1630; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-        <a-text id="t1-lang-label" value="EN" color="#c9a84c" align="center" width="0.18" position="0 0 0.01" wrap-count="6"></a-text>
-      </a-plane>
-    </a-plane>
-  </a-entity>
-
-
-  <a-entity
-    id="target-2"
-    mindar-image-target="targetIndex: 2"
-    ar-target="qrValue: ARTIFACT-PAINT-003; idx: 2">
-
-    <a-plane position="0 0 0" width="1" height="0.75" material="opacity: 0; transparent: true; depthWrite: false;"></a-plane>
-
-    <a-entity position="0 0.49 0.01">
-      <a-plane width="0.82" height="0.115" material="color: #0a1628; opacity: 0.88; transparent: true;"></a-plane>
-      <a-plane width="0.82" height="0.003" position="0 0.056 0.001" material="color: #c9a84c; opacity: 1;"></a-plane>
-      <a-text id="t2-title" value="—" color="#c9a84c" align="center" width="0.75" position="0 0 0.002" wrap-count="24"></a-text>
-    </a-entity>
-
-    <a-entity id="panel-2" visible="false" position="0 0.02 0.04">
-      <a-plane width="0.96" height="0.64" material="color: #0b1630; opacity: 0.95; transparent: true;"></a-plane>
-      <a-plane width="0.96" height="0.004" position="0 0.322 0.001" material="color: #c9a84c; opacity: 1;"></a-plane>
-      <a-text id="p2-label" value="" color="#c9a84c" align="center" width="0.88" position="0 0.265 0.003" wrap-count="18" letter-spacing="3"></a-text>
-      <a-plane width="0.78" height="0.002" position="0 0.225 0.002" material="color: #c9a84c; opacity: 0.35;"></a-plane>
-      <a-text id="p2-content" value="" color="#f4f0e8" align="center" width="0.84" position="0 0.185 0.003" baseline="top" wrap-count="34" line-height="55"></a-text>
-      
-      <a-plane class="ar-btn" close-panel="idx: 2" width="0.2" height="0.068" position="0.355 -0.265 0.003" material="color: #c9a84c; opacity: 0.92; transparent: true;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-        <a-text value="CLOSE" color="#0a1628" align="center" width="0.55" position="0 0 0.002" wrap-count="6"></a-text>
-      </a-plane>
-    </a-entity>
-
-    <a-plane class="ar-btn" painting-btn="action: artist; idx: 2" width="0.22" height="0.08" position="-0.36 -0.45 0.02" material="color: #c9a84c; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-      <a-text value="ARTIST" color="#0a1628" align="center" width="0.2" position="0 0 0.01" wrap-count="8"></a-text>
-    </a-plane>
-
-    <a-plane class="ar-btn" painting-btn="action: description; idx: 2" width="0.22" height="0.08" position="-0.12 -0.45 0.02" material="color: #c9a84c; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-      <a-text value="INFO" color="#0a1628" align="center" width="0.2" position="0 0 0.01" wrap-count="8"></a-text>
-    </a-plane>
-
-    <a-plane class="ar-btn" painting-btn="action: history; idx: 2" width="0.22" height="0.08" position="0.12 -0.45 0.02" material="color: #c9a84c; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-      <a-text value="HISTORY" color="#0a1628" align="center" width="0.2" position="0 0 0.01" wrap-count="8"></a-text>
-    </a-plane>
-
-    <a-plane width="0.22" height="0.08" position="0.36 -0.45 0.02" material="color: #c9a84c; shader: flat;">
-      <a-plane class="ar-btn" painting-btn="action: language; idx: 2" width="0.20" height="0.06" position="0 0 0.01" material="color: #0b1630; shader: flat;" animation__click="property: scale; from: 1 1 1; to: 0.92 0.92 0.92; dur: 100; startEvents: click; dir: alternate; loop: 1">
-        <a-text id="t2-lang-label" value="EN" color="#c9a84c" align="center" width="0.18" position="0 0 0.01" wrap-count="6"></a-text>
-      </a-plane>
-    </a-plane>
-  </a-entity>
-
-</a-scene>
+  </a-scene>
 
 </body>
+
 </html>
