@@ -5,8 +5,8 @@
 ───────────────────────────────────────────────────────────── */
 const TARGET_QR_MAP = {
   0: 'ARTIFACT-PAINT-001',   // Spoliarium
-  1: 'ARTIFACT-PAINT-002',   // The Parisian Life
-  2: 'ARTIFACT-PAINT-003',   // Blood Compact
+  1: 'ARTIFACT-PAINT-002',   
+  2: 'ARTIFACT-PAINT-003',   
 };
 
 const LANGS = ['EN', 'KR', 'JP', 'CH'];
@@ -14,6 +14,7 @@ let currentLang = 'EN';
 
 const paintingCache = new Map();
 const activeOverlays = new Set();
+
 
 /* ─────────────────────────────────────────────────────────────
    API_BASE — works for ALL common local setups:
@@ -44,7 +45,7 @@ async function fetchPaintingData(qrValue, langCode) {
   const url = `${API_BASE}/get_painting.php?` +
     new URLSearchParams({ qr_value: qrValue, language_code: langCode });
 
-  console.log('[ArtiFact] Fetching:', url);   // visible in DevTools → Console
+  console.log('[ArtiFact] Fetching:', url);   
 
   let res;
   try {
@@ -72,9 +73,6 @@ async function fetchPaintingData(qrValue, langCode) {
   return data;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   HELPERS
-───────────────────────────────────────────────────────────── */
 function truncate(str, maxChars) {
   if (!str) return '';
   str = str.trim();
@@ -112,14 +110,6 @@ function showHtmlEl(id, show) {
   show ? el.classList.remove('hidden') : el.classList.add('hidden');
 }
 
-/* ─────────────────────────────────────────────────────────────
-   OVERLAY HELPERS
-───────────────────────────────────────────────────────────── */
-
-/**
- * trackerMap  — idx → { el, anchorEl, active, screenX, screenY }
- * Populated by ar-target.init(); read each frame by the rAF loop.
- */
 const trackerMap = {};
 
 function showOverlay(idx) {
@@ -172,9 +162,6 @@ function closePanel(idx) {
   }
 }
 
-/* ─────────────────────────────────────────────────────────────
-   PANEL CONTENT BUILDER
-───────────────────────────────────────────────────────────── */
 const ACTION_LABELS = {
   artist: 'ARTIST',
   description: 'ABOUT THIS WORK',
@@ -202,11 +189,6 @@ function syncLangUI(lang) {
   Object.keys(TARGET_QR_MAP).forEach(i => setOverlayLang(i, lang));
 }
 
-/* ─────────────────────────────────────────────────────────────
-   WORLD → SCREEN PROJECTION
-   Projects a THREE.js world-space position through the A-Frame
-   camera's view+projection matrices to get CSS pixel coords.
-───────────────────────────────────────────────────────────── */
 const _worldPos = new THREE.Vector3();
 const _screenVec = new THREE.Vector3();
 
@@ -239,22 +221,9 @@ function worldToScreen(object3D) {
   };
 }
 
-/* ─────────────────────────────────────────────────────────────
-   TRACKING LOOP
-   Runs every animation frame; moves each active overlay to
-   the projected screen position of its A-Frame target entity.
-───────────────────────────────────────────────────────────── */
-
-// ── Position tuning ──────────────────────────────────────────
-//
-//  These are plain CSS pixel offsets applied AFTER the target centre
-//  is projected onto the screen. They are always the same number of
-//  pixels regardless of how far away the camera is.
-//
 const OVERLAY_OFFSET_Y = 100;    
 const OVERLAY_OFFSET_X = 0;    
 
-// Lerp factor — closer to 1 = snappier, closer to 0 = smoother/laggy
 const LERP = 0.38;
 
 function trackingLoop() {
@@ -265,27 +234,22 @@ function trackingLoop() {
     const ov = document.getElementById(`overlay-${idx}`);
     if (!ov || ov.classList.contains('hidden')) continue;
 
-    // Project the entity's world-space centre to screen pixels
     const centre = worldToScreen(tracker.object3D);
     if (!centre) continue;
 
-    // Apply the screen-space offset so the overlay sits BELOW the painting
     const pos = {
       x: centre.x + OVERLAY_OFFSET_X,
       y: centre.y + OVERLAY_OFFSET_Y,
     };
 
-    // Initialise on first frame so there's no lerp-from-zero jump
     if (tracker.screenX === undefined) {
       tracker.screenX = pos.x;
       tracker.screenY = pos.y;
     }
 
-    // Smooth interpolation — kills per-frame jitter from MindAR
     tracker.screenX += (pos.x - tracker.screenX) * LERP;
     tracker.screenY += (pos.y - tracker.screenY) * LERP;
 
-    // Clamp so the overlay never slides entirely off-screen
     const ovW = ov.offsetWidth || 320;
     const ovH = ov.offsetHeight || 120;
     const vw = window.innerWidth;
@@ -302,10 +266,6 @@ function trackingLoop() {
   requestAnimationFrame(trackingLoop);
 }
 
-/* ─────────────────────────────────────────────────────────────
-   AFRAME COMPONENT — ar-target
-   Registers the entity in trackerMap and fires show/hide.
-───────────────────────────────────────────────────────────── */
 AFRAME.registerComponent('ar-target', {
   schema: {
     qrValue: { type: 'string', default: '' },
@@ -331,6 +291,7 @@ AFRAME.registerComponent('ar-target', {
       showOverlay(idx);
       showHtmlEl('scan-hint', false);
       showHtmlEl('lang-switcher', true);
+      document.body.classList.add('spotlight');
 
       try {
         const data = await fetchPaintingData(qrValue, currentLang);
@@ -347,6 +308,7 @@ AFRAME.registerComponent('ar-target', {
       trackerMap[idx].active = false;
       hideOverlay(idx);
       setOverlayTitle(idx, '—');
+      if (activeOverlays.size === 0) document.body.classList.remove('spotlight');
       setTimeout(() => {
         if (activeOverlays.size === 0) showHtmlEl('scan-hint', true);
       }, 400);
